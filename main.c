@@ -2,125 +2,191 @@
 #include <malloc.h>
 #include <math.h>
 #include <string.h>
+#include <ctype.h>
+#include "utils.h"
 
-
-typedef struct Node Node;
-struct Node {
-    char value;
-    struct Node *next;
-};
-
-Node *allocate() {
-    return (struct Node *) malloc(sizeof(struct Node));
+StackInt* stringToStack(char* equation, int len) {
+    int num = 0;
+    StackInt* output = newStackInt();
+    popStackInt(&output);
+    for (int i = 0; i < len; i++) {
+        num = 0;
+        if (isdigit(equation[i]) != 0) {
+            while (equation[i] != ' ' && i < len) {
+                num *= 10;
+                num += equation[i] - '0';
+                i++;
+            }
+            pushStackInt(&output, num);
+        }
+    }
+    return output;
 }
 
-Node *initNode(char val) {
-    Node *n = allocate();
-    n->value = val;
-    n->next = NULL;
-    return n;
-}
-
-int isEmpty(Node* root) {
-    return root == NULL;
-}
-
-Node *newNode() {
-    Node *n = allocate();
-    n->next = NULL;
-    return n;
-}
-
-char pop(Node** node) {
-    struct Node* tmp = *node;
-    char val = tmp->value;
-    *node = (*node)->next;
-    free(tmp);
-    return val;
-}
-
-void push(Node** node, char val) {
-    struct Node* temp = initNode(val);
-    temp->next = *node;
-    *node = temp;
+StackChar* stringToOp(char* equation, int len) {
+    StackChar* op = newStackChar();
+    popStackChar(&op);
+    for (int i = 0; i < len; i++) {
+        if (isdigit(equation[i]) == 0 && equation[i] != ' ') {
+            pushStackChar(&op, equation[i]);
+        }
+    }
+    return op;
 }
 
 int calculate(char* equation, int len) {
-    Node *operator = newNode();
-    Node *output = newNode();
-    int offset = 0;
-    for (int i = 0; i < len - offset; i += 2) {
-// check for parentheses before doing anything else
-        switch (equation[i]) {
-            case '(': {
-                int start = i + 1;
-                int end;
-                while (equation[i] != ')') {
-                    i++;
-                }
-                end = i - 1;
-                char subEq[end - start + 1];
-                int index = 0;
-                for (int j = start; j <= end; j++) {
-                    subEq[index] = equation[j];
-                    index++;
-                }
-                push(&output, (char)((calculate(subEq, sizeof(subEq)))+ 48));
+    StackChar *operators = newStackChar();
+    StackChar *tmpOperators = newStackChar();
+    StackInt *output = newStackInt();
+    StackInt *tmpOutput = newStackInt();
+
+    while (!isStackCharEmpty(operators)) {
+        char operator = popStackChar(&operators);
+        int operand = popStackInt(&output);
+        switch (operator) {
+            case '^': {
+                int val = pow(operand, popStackInt(&output));
+                pushStackInt(&output, val);
                 break;
             }
 
             case '*': {
-                if (equation[i+1] == '*') {
-                    i += 3;
-                    int val = pow(pop(&output) - '0', equation[i] - '0');
-                    push(&output, (char)(val + '0'));
-                } else {
-                    i += 2;
-                    int val = (pop(&output) - '0') * (equation[i] - '0');
-                    push(&output, (char)(val + '0'));
-                }
+                int val = operand * popStackInt(&output);
+                pushStackInt(&output, val);
                 break;
             }
             case '/': {
-                i += 2;
-                int val = (pop(&output) - '0') / (equation[i] - '0');
-                push(&output, (char)(val + '0'));
-                break;
-            }
-            case '+': {
-                push(&operator, equation[i]);
-                break;
-            }
-            case '-': {
-                push(&operator, equation[i]);
+                int val = operand / popStackInt(&output);
+                pushStackInt(&output, val);
                 break;
             }
             default: {
-                char val = equation[i];
-                push(&output, val);
+                pushStackChar(&operators, operator);
+                pushStackInt(&output, operand);
+
+                tmpOperators->pushStackChar(operator);
+                tmpOutput->pushStackInt(operand);
                 break;
             }
         }
     }
 
-    while (!isEmpty(operator)) {
-        char op = pop(&operator);
-        if (op == '+') {
-            int val = pop(&output) + pop(&output) - '0';
-            push(&output, (char)val);
-        } else if (op == '-') {
-            int val = pop(&output) - pop(&output) + '0';
-            push(&output, (char)val);
-        }
-    }
-
-    return pop(&output) - '0';
+    return popStackInt(&output);
 }
 
+//int calculate(char* equation, int len) {
+//    StackChar *operator = newStackChar();
+////    StackChar *output = newStackChar();
+//    StackInt *output = newStackInt();
+//    int offset = 0;
+//    for (int i = 0; i < len - offset; i++) {
+//// check for parentheses before doing anything else
+////fix method and adjust to stackInt
+//        if (equation[i] == '(') {
+//            int start = i + 1;
+//            int end;
+//            while (equation[i] != ')') {
+//                i++;
+//            }
+//            end = i - 1;
+//            char subEq[end - start + 1];
+//            int index = 0;
+//            for (int j = start; j <= end; j++) {
+//                subEq[index] = equation[j];
+//                index++;
+//            }
+//            pushStackInt(&output, (char) (calculate(subEq, sizeof(subEq))));
+//        }
+//        switch (equation[i]) {
+//            case '(': {
+//                int start = i + 1;
+//                int end;
+//                while (equation[i] != ')') {
+//                    i++;
+//                }
+//                end = i - 1;
+//                char subEq[end - start + 1];
+//                int index = 0;
+//                for (int j = start; j <= end; j++) {
+//                    subEq[index] = equation[j];
+//                    index++;
+//                }
+//                pushStackInt(&output, (char) (calculate(subEq, sizeof(subEq))));
+//                break;
+//            }
+//
+//            case '*': {
+//                if (equation[i+1] == '*') {
+//                    i += 3;
+//                    int val = pow(popStackChar(&output) - '0', equation[i] - '0');
+//                    pushStackChar(&output, (char) (val + '0'));
+//                } else {
+//                    i += 2;
+//                    int val = (popStackChar(&output) - '0') * (equation[i] - '0');
+//                    pushStackChar(&output, (char) (val + '0'));
+//                }
+//                break;
+//            }
+//            case '/': {
+//                i += 2;
+//                int val = (popStackChar(&output) - '0') / (equation[i] - '0');
+//                int value = (popStackInt(&output) / equation[i] - '0');
+//                pushStackInt(&output, value);
+//                pushStackChar(&output, (char) (val + '0'));
+//                break;
+//            }
+//            case '+': {
+//                pushStackChar(&operator, equation[i]);
+//                break;
+//            }
+//            case '-': {
+//                pushStackChar(&operator, equation[i]);
+//                break;
+//            }
+//            default: {
+//                int num = 0;
+//                if (equation[i] != ' ') {
+//                    while (equation[i] != ' ') {
+//                        num *= 10;
+//                        num += equation[i] - '0';
+//                        i++;
+//                    }
+//                }
+//                char val = equation[i];
+//                pushStackInt(&output, num);
+//                pushStackChar(&output, val);
+//                break;
+//            }
+//        }
+//    }
+//
+//    while (!isStackCharEmpty(operator)) {
+//        char op = popStackChar(&operator);
+//        if (op == '+') {
+//            int val = popStackChar(&output) + popStackChar(&output) - '0';
+//            pushStackChar(&output, (char) val);
+//        } else if (op == '-') {
+//            int val = -popStackChar(&output) + popStackChar(&output) + '0';
+//            pushStackChar(&output, (char) val);
+//        }
+//    }
+//
+//    return popStackChar(&output) - '0';
+//}
+
 int main() {
-    char* equation = "3 ** (2 + 1)";
+    char* equation = "31 + 2 + 42 - 8";
     int len = strlen(equation);
 
     char *ptr = equation;
-    printf("%d", calculate(equation, len));
+//    printf("%d", calculate(equation, len));
+    StackInt* stack = stringToStack(equation, len);
+    StackChar* sc = stringToOp(equation, len);
+    while (!isStackCharEmpty(sc)) {
+        printf("%c \n", popStackChar(&sc));
+    }
+
+    while (!isStackIntEmpty(stack)) {
+        printf("%d \n", popStackInt(&stack));
+    }
 }
